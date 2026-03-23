@@ -1,0 +1,288 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JPanel.java to edit this template
+ */
+package views;
+
+import DAO.DrawablesDao;
+import Drawable.Drawable;
+import Drawable.DrawableCircle;
+import Drawable.DrawableEllipse;
+import Drawable.DrawableRectangle;
+import Drawable.DrawableSquare;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+import javax.swing.JPanel;
+import models.NativeForestArea;
+import models.PointShape;
+import models.ShapeDeserializer;
+import models.ShapeSerializer;
+import models.Shape;
+
+/**
+ *
+ * @author andre
+ */
+public class MainPanel extends JPanel {
+    
+    private BufferedImage image;
+    private String shape = "Circulo";
+    private String color = "Azul (Area Evaluada)";
+    private int startX, startY, endX, endY;
+    private boolean drawing = false;
+    private boolean editing = false;
+    private boolean moving = false;
+    private boolean deleting = false;
+    //private List<Shape> shapes = new ArrayList<>();
+    //private Shape selectedShape = null;
+    private DrawablesDao drawablesDao = new DrawablesDao();
+    private Drawable selectedShape = null;
+    private int offsetX, offsetY;
+    
+    
+    /**
+     * Creates new form MainPanel
+     */
+    public MainPanel() {
+        initComponents();
+        
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (editing) {
+                    selectShape(e.getX(), e.getY());
+                } else if (moving) {
+                    selectShape(e.getX(), e.getY());
+                    if (selectedShape != null) {
+                        offsetX = e.getX() - ((Shape) selectedShape).getStartX();
+                        offsetY = e.getY() - ((Shape) selectedShape).getStartY();
+                    }
+                } else if (deleting) {
+                    selectShape(e.getX(), e.getY());
+                    if (selectedShape != null) {
+                        drawablesDao.getDrawables().remove(selectedShape);
+                        selectedShape = null;
+                        repaint();
+                    }
+                } else if (e.getButton() == MouseEvent.BUTTON1) {
+                    startX = e.getX();
+                    startY = e.getY();
+                    endX = startX;
+                    endY = startY;
+                    drawing = true;
+                } else if (e.getButton() == MouseEvent.BUTTON3) {
+                    drawing = false;
+                }
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if (e.getButton() == MouseEvent.BUTTON1 && drawing) {
+                    drawing = false;
+                    addShape();
+                    repaint();
+                } else if (e.getButton() == MouseEvent.BUTTON3) {
+                    drawing = false;
+                }
+            }
+        });
+
+        addMouseMotionListener(new MouseMotionAdapter() {
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                if (drawing) {
+                    endX = e.getX();
+                    endY = e.getY();
+                    repaint();
+                } else if (editing && selectedShape != null) {
+                    ((Shape) selectedShape).setEndX(e.getX());
+                    ((Shape) selectedShape).setEndY(e.getY());
+                    repaint();
+                } else if (moving && selectedShape != null) {
+                    int newX = e.getX() - offsetX;
+                    int newY = e.getY() - offsetY;
+                    int width = ((Shape) selectedShape).getEndX() - ((Shape) selectedShape).getStartX();
+                    int height = ((Shape) selectedShape).getEndY() - ((Shape) selectedShape).getStartY();
+                    ((Shape) selectedShape).setStartX(newX);
+                    ((Shape) selectedShape).setStartY(newY);
+                    ((Shape) selectedShape).setEndX(newX + width);
+                    ((Shape) selectedShape).setEndY(newY + height);
+                    repaint();
+                }
+            }
+        });
+    }
+    
+
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
+        this.setLayout(layout);
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 1055, Short.MAX_VALUE)
+        );
+        layout.setVerticalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 550, Short.MAX_VALUE)
+        );
+    }// </editor-fold>//GEN-END:initComponents
+
+    @Override
+    protected void paintComponent(Graphics g){
+        super.paintComponent(g);
+        Graphics2D g2d = (Graphics2D) g;
+        
+        if (image != null){
+            // Poner la imagen
+            g.drawImage(image, 0, 0, this.getWidth(), this.getHeight(), null);
+        }
+        //Suavizar los bordes de las figuras
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2d.setStroke(new BasicStroke(2));
+        //Dibujar figuras almacenadas
+        for (Drawable drawable : drawablesDao.getDrawables()) {
+            g2d.setColor(((Shape) drawable).getColor());
+            drawable.draw(g2d);
+        }
+        //Dibujar figura actual        
+        if (drawing) {
+            g2d.setColor(getCurrentColor());
+            Drawable currentDrawable = createDrawable(shape, getCurrentColor(), startX, startY, endX, endY);
+            currentDrawable.draw(g2d);
+        }
+    }
+        
+    //Dibujar figura
+    private Drawable createDrawable(String shapeType, Color color, int startX, int startY, int endX, int endY) {
+        switch (shapeType) {
+            case "Circulo":
+                return new DrawableCircle(Math.abs(endX - startX), shapeType, color, startX, startY, endX, endY);
+            case "Cuadrado":
+                return new DrawableSquare(Math.abs(endX - startX), shapeType, color, startX, startY, endX, endY);
+            case "Elipse":
+                return new DrawableEllipse(Math.abs(endX - startX), Math.abs(endY - startY), shapeType, color, startX, startY, endX, endY);
+            case "Rectangulo":
+                return new DrawableRectangle(Math.abs(endX - startX), Math.abs(endY - startY), shapeType, color, startX, startY, endX, endY);
+            default:
+                throw new IllegalArgumentException("Forma no reconocida: " + shapeType);
+        }
+    }
+
+    private void addShape() {
+        Drawable newDrawable = createDrawable(shape, getCurrentColor(), startX, startY, endX, endY);
+        drawablesDao.getDrawables().add(newDrawable);
+    }
+    
+    private Color getCurrentColor() {
+        return color.equals("Azul (Area Evaluada)") ? Color.BLUE : Color.RED;
+    }
+    
+    public void setImage(BufferedImage image){
+        this.image = image;
+        repaint();
+    }
+    
+    public void setShape(String shape){
+        this.shape = shape;
+    }
+    
+    public void setColor(String color){
+        this.color = color;
+    }
+    
+    public void saveShapesToFile(File file) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        SimpleModule module = new SimpleModule();
+        module.addSerializer(Drawable.class, new ShapeSerializer()); // Usamos Drawable en lugar de Shape
+        objectMapper.registerModule(module);
+
+        try {
+            objectMapper.writeValue(file, drawablesDao.getDrawables());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    public void loadShapesFromFile(File file) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        SimpleModule module = new SimpleModule();
+        module.addDeserializer(Drawable.class, new ShapeDeserializer());
+        mapper.registerModule(module);
+        drawablesDao.getDrawables().clear();
+        Drawable[] loadedDrawables = mapper.readValue(file, Drawable[].class);
+        drawablesDao.getDrawables().addAll(Arrays.asList(loadedDrawables));
+        repaint();
+    }
+    public List<Drawable> getShapes() {
+        return drawablesDao.getDrawables();
+    }
+    
+    private void selectShape(int x, int y) {
+        for (int i = drawablesDao.getDrawables().size() - 1; i >= 0; i--) {
+            Drawable drawable = drawablesDao.getDrawables().get(i);
+            if (PointShape.isPointInShape(x, y, (Shape) drawable)) {
+                selectedShape = drawable;
+                repaint();
+                return;
+            }
+        }
+        selectedShape = null;
+        repaint();
+    }
+    
+    
+    public void setEditingMode(boolean editing) {
+        this.editing = editing;
+        setCursor(editing ? Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR) : Cursor.getDefaultCursor());
+    }
+    
+    public void setMovingMode(boolean moving) {
+        this.moving = moving;
+        if (moving) {
+            setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
+        } else {
+            setCursor(Cursor.getDefaultCursor());
+        }
+    }
+    
+    public void setDeletingMode(boolean deleting) {
+        this.deleting = deleting;
+        setCursor(deleting ? Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR) : Cursor.getDefaultCursor());
+    }   
+
+    // Calcular el porcentaje de bosque nativo
+    public double calculateRedAreaPercentage() {
+        return NativeForestArea.calculateRedAreaPercentage(drawablesDao.getDrawables());
+    }
+}    
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    // End of variables declaration//GEN-END:variables
+    
+
+
+
+
+
+
