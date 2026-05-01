@@ -2,6 +2,9 @@
 
 Aplicación de escritorio en Java desarrollada como caso de estudio académico, enfocada en la problemática de empresas dedicadas a la identificación y comercialización de créditos de carbono en regiones de bosque nativo en Colombia. La herramienta permite estimar áreas de bosque dentro de zonas evaluadas mediante el dibujo y análisis de figuras geométricas sobre imágenes satelitales o aéreas, facilitando así el cálculo y la validación de créditos de carbono.
 
+## 🎬 Demo de la aplicación
+https://github.com/user-attachments/assets/f9c17da9-a33a-470e-9c6d-dd7c8f09a182
+
 ## 📖 Contexto del Problema
 
 Un **crédito de carbono** es un certificado digital que acredita que un proyecto ambiental evitó la emisión de 1 tonelada de CO₂ en un año determinado. Este software fue desarrollado como caso de estudio académico inspirado en la problemática real de empresas como Cataruben que operan en Colombia.
