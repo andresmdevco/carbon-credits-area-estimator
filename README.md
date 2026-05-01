@@ -101,7 +101,7 @@ Fórmulas de área utilizadas en `ShapeArea.java`:
 - Apache NetBeans 12 o superior (recomendado)
 - Maven 3.x (incluido en NetBeans)
 
-## 🚀 Cómo Ejecutar
+## 🚀 Cómo Ejecutar el proyecto
 
 
 ### Opción 1: Apache NetBeans (recomendado)
